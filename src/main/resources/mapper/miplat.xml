@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "miplat">
+<resultMap type="map" id="listMap">
+		<result column="SEQ" property="seq"/>
+		<result column="MEM_NAME" property="memName"/>
+		<result column="MEM_ID" property="memId"/>
+		<result column="BOARD_SUBJECT" property="boardSubject"/>
+		<result column="BOARD_CONTENT" property="boardContent"/>
+		<result column="REG_DATE" property="regDate"/>
+		<result column="UPT_DATE" property="uptDate"/>
+		<result column="VIEW_CNT" property="viewCnt"/>
+		<result column="MAXROW" property="maxRow"/>
+	</resultMap>
+	
+	<sql id="bsList">
+		SELECT 
+		   SEQ
+		  ,MEM_NAME
+		  ,MEM_ID
+		  ,BOARD_SUBJECT
+		  ,BOARD_CONTENT
+		  ,REG_DATE
+		  ,UPT_DATE
+		  ,VIEW_CNT
+		FROM BOARD_STUDY
+	</sql>
+	<select id = "search" resultType="map" resultMap="listMap">
+		<include refid="bsList"></include>
+<!-- 			날짜  하나라도 입력 안하면 그냥 전체 검색으로 show -->
+			<if test='stDate == "____-__-__" or enDate == "____-__-__"'>
+				WHERE
+			    	BOARD_SUBJECT
+			    	LIKE '%'||#{searchTxt}||'%'
+			    	OR
+			    	BOARD_CONTENT
+			 	    LIKE '%'||#{searchTxt}||'%'
+			 	    OR
+			 	    MEM_NAME
+			 	    LIKE '%'||#{searchTxt}||'%'
+			 	    OR
+			 	    MEM_ID
+			 	    LIKE '%'||#{searchTxt}||'%'
+			</if>
+			
+<!-- 			날짜 모두 입력시 검색 -->
+			<if test = "stDate != '____-__-__' and enDate != '____-__-__'">
+			 <choose>
+			    <when test="searchType == 'memName'">
+			      	<![CDATA[
+			      	WHERE 
+					MEM_NAME 
+					LIKE '%'||#{searchTxt}||'%'
+					AND
+					REG_DATE >= #{stDate}
+					AND
+					REG_DATE <= #{enDate}
+					]]>
+			    </when>
+			    <when test="searchType == 'subject'">
+			    	<![CDATA[
+			    	WHERE
+			    	BOARD_SUBJECT
+				    	LIKE '%'||#{searchTxt}||'%'
+			    		AND
+						REG_DATE >= #{stDate}
+						AND
+						REG_DATE <= #{enDate}
+					]]>
+			    </when>
+			    <when test="searchType == 'subCont'">
+			    	<![CDATA[
+			    	WHERE
+			    	BOARD_SUBJECT
+				    	LIKE '%'||#{searchTxt}||'%'
+			    		AND
+						REG_DATE >= #{stDate}
+						AND
+						REG_DATE <= #{enDate}
+		    		OR
+			    	BOARD_CONTENT
+				 	    LIKE '%'||#{searchTxt}||'%'
+			 	    	AND
+						REG_DATE >= #{stDate}
+						AND
+						REG_DATE <= #{enDate}
+			 	    ]]>
+			    </when>
+			    <when test="searchType == 'searchAll'">
+			    	<![CDATA[
+			    	WHERE
+			    	BOARD_SUBJECT
+			    		LIKE '%'||#{searchTxt}||'%'
+		    			AND
+						REG_DATE >= #{stDate}
+						AND
+						REG_DATE <= #{enDate}
+			    	OR
+			    	BOARD_CONTENT
+			 	   		LIKE '%'||#{searchTxt}||'%'
+			 	    	AND
+						REG_DATE >= #{stDate}
+						AND
+						REG_DATE <= #{enDate}
+			 	    OR
+			 	    MEM_NAME
+				 	    LIKE '%'||#{searchTxt}||'%'
+			 	    	AND
+						REG_DATE >= #{stDate}
+						AND
+						REG_DATE <= #{enDate}
+			 	    OR
+			 	    MEM_ID
+				 	    LIKE '%'||#{searchTxt}||'%'
+			 	    	AND
+						REG_DATE >= #{stDate}
+						AND
+						REG_DATE <= #{enDate}
+					]]>
+			    </when>
+			  </choose>
+			</if>
+	</select>
+</mapper>

@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="apMapper">
+		<resultMap type="map" id="loginMap">
+			<result column="MEM_RANK" property="memRank"/>
+			<result column="MEM_NAME" property="memName"/>
+			<result column="MEM_ID" property="memId"/>
+			<result column="MEM_PASS" property="memPass"/>
+		</resultMap>
+		
+		<resultMap type="map" id = "adminMap">
+			<result column="MEM_NAME" property="memName"/>
+			<result column="ADMIN_RANK" property="adminRank"/>
+			<result column="ADMIN_NAME" property="adminName"/>
+			<result column="REG_DATE" property="regDate"/>
+		</resultMap>
+		
+		<resultMap type="map" id="appList">
+			<result column="SEQ" property="seq"/>
+			<result column="HSEQ" property="hseq"/>
+			<result column="MAX_SEQ" property="maxSeq"/>
+			<result column="MEM_NAME" property="memName"/>
+			<result column="BOARD_SUBJECT" property="boardSubject"/>
+			<result column="BOARD_CONTENT" property="boardContent"/>
+			<result column="REG_DATE" property="regDate"/>
+			<result column="APRV_DATE" property="aprvDate"/>
+			<result column="APRV_NAME" property="aprvName"/>
+			<result column="APRV_STATUS" property="aprvStatus"/>
+			<result column="APRV_STATUS" property="selectType"/>
+		</resultMap>
+		
+		<select id = "login" resultMap = "loginMap">
+			SELECT 
+			    MEM_RANK, 
+			    MEM_NAME, 
+			    MEM_ID,
+			    MEM_PASS
+		    FROM TYJ_MEMBER
+	   	 	WHERE MEM_ID = #{memId}
+		</select>
+		
+		<select id = "list" resultMap = "appList">
+            SELECT
+				SEQ,
+                NVL((SELECT MAX(SEQ) FROM TYJ_LIST), 0) + 1 MAX_SEQ,
+				MEM_NAME,
+				BOARD_SUBJECT,
+				BOARD_CONTENT,
+				TO_CHAR(REG_DATE, 'YYYY-MM-DD') REG_DATE,
+				TO_CHAR(APRV_DATE, 'YYYY-MM-DD') APRV_DATE,
+				APRV_NAME,
+				DECODE(APRV_STATUS, 's1', '임시저장', 's2', '결재대기', 's3', '반려', 's4', '결재중', 's5', '결재완료') APRV_STATUS
+			FROM TYJ_LIST
+            WHERE SEQ IN (SELECT 
+            DISTINCT(SEQ)
+            FROM TYJ_HISTORY
+            WHERE 
+            APRV_NAME = #{memName}
+            )
+            <choose>
+            	<when test = "adminRank != ''">
+            		<if test = "adminRank == 'R3'">
+		            	OR APRV_STATUS = 's2'
+		            </if>
+		            
+		            <if test = "adminRank == 'R4'">
+		            	OR APRV_STATUS = 's4'
+		            	OR APRV_STATUS = 's5'
+		            </if>
+            	</when>
+            	<otherwise>
+		            <if test = "memRank == 'R3'">
+		            	OR APRV_STATUS = 's2'
+		            </if>
+		            
+		            <if test = "memRank == 'R4'">
+		            	OR APRV_STATUS = 's4'
+		            	OR APRV_STATUS = 's5'
+		            </if>
+            	</otherwise>
+            </choose>
+            ORDER BY 1
+           
+		</select>
+		
+		<select id  = "ajaxList" resultMap = "appList" parameterType = "map">
+		    SELECT
+				SEQ,
+                NVL((SELECT MAX(SEQ) FROM TYJ_LIST), 0) + 1 MAX_SEQ,
+				MEM_NAME,
+				BOARD_SUBJECT,
+				BOARD_CONTENT,
+				TO_CHAR(REG_DATE, 'YYYY-MM-DD') REG_DATE,
+				TO_CHAR(APRV_DATE, 'YYYY-MM-DD') APRV_DATE,
+				APRV_NAME,
+				DECODE(APRV_STATUS, 's1', '임시저장', 's2', '결재대기', 's3', '반려', 's4', '결재중', 's5', '결재완료') APRV_STATUS
+			FROM TYJ_LIST
+			WHERE 1=1
+           
+		 <if test ="memRank == 'R1' || memRank == 'R2'">
+					AND MEM_NAME = #{memName}
+		 		<if test = "selectType != 's0'">
+					AND APRV_STATUS =  #{selectType}		
+		 		</if>
+		 </if>
+    		
+   		 <if test = "memRank == 'R3'">
+    		<choose>
+		   		<when test = "selectType == 's0'">
+		           	 AND SEQ IN (
+		           		SELECT 
+			            DISTINCT(SEQ)
+			            FROM TYJ_HISTORY
+			            WHERE 
+			            APRV_NAME = #{memName}
+		            )
+		   			OR APRV_STATUS = 's2'
+		   		</when>
+    			<when test = "selectType == 's2'">
+    				AND APRV_STATUS = #{selectType}
+    			</when>
+    			
+    			<otherwise>
+   					AND SEQ IN (
+		           		SELECT 
+			            DISTINCT(SEQ)
+			            FROM TYJ_HISTORY
+			            WHERE 
+			            APRV_NAME = #{memName}
+		            )
+            		AND APRV_STATUS = #{selectType}
+    			</otherwise>
+    		</choose>
+   		 </if>
+    		
+   		 <if test = "memRank == 'R4'">
+    		<choose>
+    			<when test = "selectType == 's0'">
+		           	AND SEQ IN (
+		           		SELECT 
+			            DISTINCT(SEQ)
+			            FROM TYJ_HISTORY
+			            WHERE 
+			            APRV_NAME = #{memName}
+		            )
+		   			OR APRV_STATUS = 's4'
+		   			OR APRV_STATUS = 's5'
+    			</when>
+    			<when test = "selectType == 's4'">
+    				AND APRV_STATUS = #{selectType}
+    			</when>
+    			<when test = "selectType == 's5'">
+    				AND APRV_STATUS = #{selectType}
+    			</when>
+    			<otherwise>
+					AND SEQ IN (
+		           		SELECT 
+			            DISTINCT(SEQ)
+			            FROM TYJ_HISTORY
+			            WHERE 
+			            APRV_NAME = #{memName}
+		            )
+            		AND APRV_STATUS = #{selectType}
+    			</otherwise>
+    		</choose>
+   		 </if>
+           ORDER BY 1
+		</select> 
+		
+		<select id = "searchList" resultMap = "appList" parameterType = "map">
+			  SELECT
+			  *
+			  FROM
+			  (SELECT
+				SEQ,
+                NVL((SELECT MAX(SEQ) FROM TYJ_LIST), 0) + 1 MAX_SEQ,
+				MEM_NAME,
+				BOARD_SUBJECT,
+				BOARD_CONTENT,
+				TO_CHAR(REG_DATE, 'YYYY-MM-DD') REG_DATE,
+				TO_CHAR(APRV_DATE, 'YYYY-MM-DD') APRV_DATE,
+				APRV_NAME,
+				DECODE(APRV_STATUS, 's1', '임시저장', 's2', '결재대기', 's3', '반려', 's4', '결재중', 's5', '결재완료') APRV_STATUS
+			FROM TYJ_LIST
+			
+            WHERE 1=1
+            AND SEQ IN (SELECT 
+            DISTINCT(SEQ)
+            FROM TYJ_HISTORY
+            WHERE 
+            APRV_NAME = #{memName}
+            )
+            
+            <choose>
+            	<when test = "adminRank !=''">
+            		  <choose>
+		            	<when test = "adminRank =='R3'">
+				            OR APRV_STATUS = 's2'
+		            	</when>
+		            	
+		            	<when test = "adminRank == 'R4'">
+		            		OR APRV_STATUS = 's4'
+		            		OR APRV_STATUS = 's5'
+		            	</when>
+		            	
+		            </choose>
+            	</when>
+            	
+            	<otherwise>
+		            <choose>
+		            	<when test = "memRank =='R3'">
+				            OR APRV_STATUS = 's2'
+		            	</when>
+		            	
+		            	<when test = "memRank == 'R4'">
+		            		OR APRV_STATUS = 's4'
+		            		OR APRV_STATUS = 's5'
+		            	</when>
+		            	
+		            </choose>
+            	</otherwise>
+            </choose>
+            ) TYJ_LIST
+            WHERE 1=1
+            
+            <if test = "searchTxt == null and stDate != null and enDate != null">
+            <![CDATA[
+	            AND
+					REG_DATE >= #{stDate}
+					AND
+					REG_DATE <= #{enDate}
+			]]>
+            </if>
+             
+            <if test =  "searchTxt != null">
+	            <if test = "stDate != '' and enDate != ''">
+	           	<![CDATA[
+		            AND
+						REG_DATE >= #{stDate}
+						AND
+						REG_DATE <= #{enDate}
+				]]>
+				</if>
+				 
+            <choose>
+	            <when test = "searchType == 'searchName'">
+		            AND MEM_NAME LIKE '%'||#{searchTxt}||'%'
+	            </when>
+	            
+	            <when test = "searchType == 'searchSubject'">
+					AND BOARD_SUBJECT LIKE '%'||#{searchTxt}||'%'            
+	            </when>
+	            
+	            <when test = "searchType == 'searchApprv'">
+	            	AND APRV_NAME LIKE '%'||#{searchTxt}||'%'
+	            </when>
+            
+            </choose>
+    			        
+           </if>
+           ORDER BY 1
+		</select>
+
+		
+		<select id = "selectSeq" resultType="integer">
+			SELECT
+                MAX(TO_NUMBER(SEQ)) + 1
+            FROM
+            TYJ_LIST
+		</select>
+		
+		
+		<select id = "history" resultMap = "appList">
+			SELECT
+			    HSEQ,
+			    REG_DATE,
+			    APRV_NAME,
+			    DECODE(APRV_STATUS, 's1', '임시저장', 's2', '결재대기', 's3', '반려', 's4', '결재중', 's5', '결재완료') APRV_STATUS
+			    FROM TYJ_HISTORY
+			    WHERE
+				SEQ = #{seq}
+				ORDER BY 1
+		</select>
+		
+		<select id = "selectContent" resultMap = "appList">
+			SELECT
+				SEQ,
+				MEM_NAME,
+				BOARD_SUBJECT,
+				BOARD_CONTENT
+				FROM TYJ_LIST
+				WHERE SEQ = #{seq}
+		</select>
+		
+		<select id = "selectMember" resultMap = "loginMap">
+			SELECT
+				MEM_RANK,
+				MEM_NAME
+				FROM
+				TYJ_MEMBER
+				WHERE 1=1
+				<choose>
+					<when test = "memRank == 'R3'">
+					AND MEM_RANK IN ('R1','R2')
+					</when>
+					
+					<when test = "memRank == 'R4'">
+					AND MEM_RANK IN ('R1','R2','R3')
+					</when>
+				</choose>
+					AND NOT MEM_NAME IN
+					(SELECT
+					MEM_NAME
+					FROM
+					TYJ_DAERI)
+		</select>
+		
+		<select id = "isAdminList" resultType="map" parameterType="map" resultMap = "adminMap">
+			SELECT
+			MEM_NAME,
+			ADMIN_RANK,
+			ADMIN_NAME,
+			REG_DATE
+			FROM TYJ_DAERI
+			WHERE MEM_NAME = #{memName}
+		</select>
+		
+		<insert id = "insertAdmin">
+			INSERT INTO TYJ_DAERI(
+				MEM_NAME,
+				ADMIN_RANK,
+				ADMIN_NAME,
+				REG_DATE
+			) VALUES (
+				#{memName},
+				#{adminRank},
+				#{adminName},
+				SYSDATE
+			)
+			
+			
+			
+		</insert>
+		
+		<insert id = "insertList">
+			INSERT INTO TYJ_LIST(
+				SEQ,
+				MEM_NAME,
+				BOARD_SUBJECT,
+				BOARD_CONTENT,
+				REG_DATE,
+				APRV_DATE,
+				APRV_NAME,
+				APRV_STATUS 
+			) VALUES (
+				#{seq},
+				#{memName},
+				#{boardSubject},
+				#{boardContent},
+				SYSDATE,
+				NULL,
+				NULL,
+				#{aprvStatus}
+			)
+			
+		</insert>
+		<update id ="updateList" parameterType = "map">
+			UPDATE TYJ_LIST SET
+				BOARD_SUBJECT = #{boardSubject},
+				BOARD_CONTENT = #{boardContent},
+				APRV_DATE = SYSDATE,
+				APRV_NAME = #{aprvName},
+				APRV_STATUS = #{aprvStatus}
+			WHERE SEQ = #{seq} 
+		</update>
+		
+		<insert id = "insertHistory">
+		    INSERT INTO TYJ_HISTORY(
+			    SEQ,
+			    HSEQ,
+			    REG_DATE,
+			    APRV_NAME,
+			    APRV_STATUS
+			    ) VALUES (
+		        #{seq},
+		            (SELECT
+			            NVL(MAX(HSEQ+1), 1)
+			            FROM TYJ_HISTORY H, TYJ_LIST L
+			            WHERE H.SEQ = L.SEQ(+)
+			            AND H.SEQ = #{seq})
+		        ,
+		        SYSDATE,
+		        #{aprvName},
+		        #{aprvStatus}
+		        )
+			
+		</insert>
+		
+		<update id = "updateHistory" parameterType="map">
+			UPDATE TYJ_LIST SET
+				BOARD_SUBJECT = #{boardSubject},
+				BOARD_CONTENT = #{boardContent},
+			<if test = "aprvDate != null">
+				APRV_DATE = #{aprvDate},
+				APRV_NAME = #{aprvName},
+			</if>
+				APRV_STATUS = #{aprvStatus}
+			WHERE SEQ = #{seq}
+			
+		</update>
+		
+		
+</mapper>
